@@ -1,32 +1,47 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import { storeToRefs } from 'pinia'
+import { ref } from 'vue'
+import Surfer from './components/Surfer.vue'
+import Controller from './components/Controller.vue'
 
-window.electronAPI.sendMessage('Hello from App.vue!');
 </script>
 
 <template>
-  <div>
-    <a href="https://vitejs.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+  <div class="top">
+    <h1>
+      Wavesurfer
+    </h1>
   </div>
-  <HelloWorld msg="Vite + Vue" />
+  <div class="content">
+    <div class="surfer-wrapper">
+      <Surfer />
+    </div>
+    <div class="subtitles-wrapper">
+    </div>
+  </div>
+  <Controller />
 </template>
 
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+<style scoped lang="scss">
+.top {
+  height: 44px;
+  background: var(--vt-c-white-soft);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  h1 {
+    font-size: 1rem;
+  }
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+.content {
+  flex: 1;
 }
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
+.surfer-wrapper {
+  height: 50%;
+  border-bottom: 1px solid var(--vt-c-white-soft);
+}
+.subtitles-wrapper {
+  height: 50%;
+  border-bottom: 1px solid var(--vt-c-white-soft);
 }
 </style>

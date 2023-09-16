@@ -1,5 +1,20 @@
 import {contextBridge, ipcRenderer} from 'electron';
 
-contextBridge.exposeInMainWorld('electronAPI', {
-  sendMessage: (message: string) => ipcRenderer.send('message', message)
-})
+contextBridge.exposeInMainWorld('tobiPlayer', {
+  sendMessage: (message: string) => ipcRenderer.send('message', message),
+
+  openDialog: async () => {
+    const filePath = await ipcRenderer.invoke('open-dialog');
+    console.log('open file', filePath);
+    return filePath;
+  },
+
+  setAppTitle: (title) => {
+    ipcRenderer.send('set-app-title', title);
+  },
+
+  loadAudioFile: async (filePath) => {
+    const audioUrl = await ipcRenderer.invoke('load-audio-file', filePath);
+    return audioUrl;
+  },
+});

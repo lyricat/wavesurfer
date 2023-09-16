@@ -16,15 +16,24 @@
     "url": "https://github.com/Deluze"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^4.0.0",
+    "@vitejs/plugin-vue": "^4.3.4",
+    "@vue/cli-plugin-typescript": "^5.0.8",
     "chalk": "^4.1.2",
     "chokidar": "^3.5.3",
     "electron": "^25.2.0",
     "electron-builder": "^24.2.1",
+    "sass": "^1.67.0",
     "typescript": "^4.8.4",
+    "unplugin-auto-import": "^0.16.6",
+    "unplugin-vue-components": "^0.25.2",
     "vite": "^4.1.1"
   },
   "dependencies": {
-    "vue": "^3.2.47"
+    "@vueuse/core": "^10.4.1",
+    "pinia": "^2.1.6",
+    "pitchfinder": "^2.3.2",
+    "quail-ui": "^0.1.5",
+    "vue": "^3.2.47",
+    "wavesurfer.js": "^7.3.1"
   }
 }
