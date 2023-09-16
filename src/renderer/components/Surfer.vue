@@ -9,19 +9,42 @@ import Pitchfinder from 'pitchfinder'
 
 import { useAppStore } from '../stores'
 const appStore = useAppStore()
-const { isPlaying, loopRegion, playRegion } = storeToRefs(appStore)
+const { isPlaying, loopRegion, playRegion, activatedSurferName } = storeToRefs(appStore)
 // const pitchWorker = new Worker(path.resolve(__dirname, 'workers', 'pitch-worker.js'));
 
 let ws:any = null
+let record:any = null
 let activeRegion:any = null;
-const constainerEl = ref(null)
+const containerEl = ref(null)
+const micEl = ref(null)
 const wsPeaks = ref(null)
+const filled = ref(false)
+const isRecording = ref(false)
+
+const props = defineProps({
+  name: {
+    type: String,
+    default: 'main',
+  },
+  useRecord: {
+    type: Boolean,
+    default: false,
+  }
+})
+
+const isActivated = computed(() => {
+  return props.name === activatedSurferName.value
+})
 
 watch(() => isPlaying.value, (v) => {
-  if (v) {
-    ws.play()
-  } else {
-    ws.pause()
+  if (ws) {
+    if (v) {
+      if (isActivated.value) {
+        ws.play()
+      }
+    } else {
+      ws.pause()
+    }
   }
 })
 
@@ -29,16 +52,28 @@ watch(() => wsPeaks.value, (v) => {
   updatePeaks()
 })
 
-function createWs(audio: HTMLAudioElement) {
-  const _ws = WaveSurfer.create({
-    container: constainerEl.value as any,
+function createWs(container:any, audio: any, url: string) {
+  const opts:any = {
+    container: container as any,
     waveColor: 'rgba(200, 200, 200, 0.5)',
     progressColor: 'rgba(100, 100, 100, 0.5)',
     minPxPerSec: 100,
     hideScrollbar: true,
     autoCenter: false,
-    media: audio
-  })
+    height: container.clientHeight,
+  }
+
+  if (audio) {
+    opts.media = audio
+  } else {
+    opts.url = url
+  }
+
+  console.log(opts);
+
+  const _ws = WaveSurfer.create(opts)
+
+  record = _ws.registerPlugin(RecordPlugin.create())
 
   // Initialize the Regions plugin
   const wsRegions = _ws.registerPlugin(RegionsPlugin.create())
@@ -49,21 +84,12 @@ function createWs(audio: HTMLAudioElement) {
   })
 
   _ws.once('decode', () => {
-    // const slider = document.querySelector('input[type="range"]')
-    // slider.addEventListener('input', (e) => {
-    //   const minPxPerSec = e.target.valueAsNumber
-    //   _ws.zoom(minPxPerSec)
-    // })
     wsPeaks.value = ws.getDecodedData().getChannelData(0)
-    // pitchWorker.postMessage({ peaks, sampleRate: ws.options.sampleRate })
     console.log('decoded!')
   })
 
-  // Initialize the Timeline plugin
-  // _ws.registerPlugin(TimelinePlugin.create())
-
   _ws.on('interaction', () => {
-    _ws.playPause()
+    _ws.pause()
     activeRegion = null
   })
 
@@ -98,13 +124,9 @@ function createWs(audio: HTMLAudioElement) {
 
   wsRegions.on('region-clicked', (region:any, e:any) => {
     e.stopPropagation() // prevent triggering a click on the waveform
+    console.log(region);
+    _ws.seekTo(region.start / _ws.getDuration())
     activeRegion = region
-    if (region.play) {
-      _ws.playPause()
-    } else {
-      region.play()
-      region.setOptions({ color: randomColor() })
-    }
   })
 
   return _ws;
@@ -179,21 +201,117 @@ async function loadFile() {
 
     const audioUrl = await tobiPlayer.loadAudioFile(filePath);
     const audio = new Audio(audioUrl);
-    ws = createWs(audio);
+    ws = createWs(containerEl.value, audio, "");
+
+    filled.value = true;
+    activatedSurferName.value = props.name;
   };
 }
 
+function startRecording() {
+  if (record) {
+    if (record.isRecording()) {
+      record.stopRecording()
+      isRecording.value = false
+      return
+    }
+
+    record.startRecording().then(() => {
+      isRecording.value = true
+    })
+
+  }
+}
+
+function activate() {
+  if (filled.value) {
+    activatedSurferName.value = props.name
+  }
+}
+
 onMounted(() => {
+  setTimeout(() => {
+    const mic:any = micEl.value as any;
+    const _ws = WaveSurfer.create({
+      container: mic,
+      waveColor: 'rgba(100, 200, 200, 0.5)',
+      progressColor: 'rgba(100, 100, 100, 0.5)',
+      minPxPerSec: 100,
+      hideScrollbar: true,
+      autoCenter: false,
+      height: mic.clientHeight,
+    })
+
+    record = _ws.registerPlugin(RecordPlugin.create())
+    record.on('record-end', (blob:any) => {
+      const recordedUrl = URL.createObjectURL(blob)
+      ws = createWs(containerEl.value, null, recordedUrl);
+      filled.value = true;
+      activatedSurferName.value = props.name;
+
+      // Download link
+      // const link = container.appendChild(document.createElement('a'))
+      // Object.assign(link, {
+      //   href: recordedUrl,
+      //   download: 'recording.' + blob.type.split(';')[0].split('/')[1] || 'webm',
+      //   textContent: 'Download recording',
+      // })
+    })
+  }, 300)
 })
 </script>
 
 <template>
-  <div class="card" ref="constainerEl">
-  </div>
-  <div>
-    <button class="button plain" @click="loadFile">Tap to choose an audio file</button>
+  <div class="surfer" :class="isActivated ? 'activated': ''" @click="activate">
+    <div ref="containerEl" class="wave" :class="filled? 'show': ''">
+    </div>
+    <div class="mic" :class="isRecording? 'show': ''" ref="micEl"></div>
+
+    <div v-if="!filled" class="placeholder-wrapper">
+      <template v-if="!useRecord">
+        <button class="button outlined" @click="loadFile">Choose an audio file</button>
+      </template>
+      <template v-else>
+
+        <button class="button outlined" @click="startRecording">
+          {{ isRecording ? 'Stop recording' : 'Start recording' }}
+        </button>
+      </template>
+    </div>
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+.surfer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  position: relative;
+  &.activated {
+    .wave, .mic {
+      box-shadow: 0 0 20px rgba(114, 177, 255, 0.2);
+    }
+  }
+  .wave, .mic {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    opacity: 0;
+    border-radius: 2px;
+    box-shadow: 0 0 10px rgba(114, 177, 255, 0.2);
+    &.show {
+      opacity: 1;
+    }
+  }
+}
+.placeholder-wrapper {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 </style>

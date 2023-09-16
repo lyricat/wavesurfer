@@ -3,6 +3,21 @@ import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import Surfer from './components/Surfer.vue'
 import Controller from './components/Controller.vue'
+import { useAppStore } from './stores'
+const appStore = useAppStore()
+const { isPlaying, activatedSurferName } = storeToRefs(appStore)
+
+function handleKeyUp(e: KeyboardEvent) {
+  if (e.key === ' ') {
+    if (activatedSurferName.value !== '') {
+      isPlaying.value = !isPlaying.value
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener("keyup", handleKeyUp);
+})
 
 </script>
 
@@ -14,7 +29,10 @@ import Controller from './components/Controller.vue'
   </div>
   <div class="content">
     <div class="surfer-wrapper">
-      <Surfer />
+      <Surfer name="main" />
+    </div>
+    <div class="surfer-wrapper">
+      <Surfer :use-record="true" name="record"/>
     </div>
     <div class="subtitles-wrapper">
     </div>
@@ -37,7 +55,7 @@ import Controller from './components/Controller.vue'
   flex: 1;
 }
 .surfer-wrapper {
-  height: 50%;
+  height: 30%;
   border-bottom: 1px solid var(--vt-c-white-soft);
 }
 .subtitles-wrapper {

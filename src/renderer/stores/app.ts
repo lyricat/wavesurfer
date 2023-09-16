@@ -5,6 +5,7 @@ export const useAppStore = defineStore('app', () => {
   const isPlaying = ref(false);
   const playRegion = ref(false);
   const loopRegion = ref(false);
+  const activatedSurferName = ref('');
 
   const popupMenuCloseTrigger = ref(0);
 
@@ -16,6 +17,7 @@ export const useAppStore = defineStore('app', () => {
     isPlaying,
     playRegion,
     loopRegion,
+    activatedSurferName,
 
     popupMenuCloseTrigger,
     closePopupMenu,

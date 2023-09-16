@@ -3,9 +3,13 @@ import { storeToRefs } from 'pinia'
 import { defineProps, onMounted, ref } from 'vue'
 import { useAppStore } from '../stores'
 const appStore = useAppStore()
-const { isPlaying, loopRegion, playRegion } = storeToRefs(appStore)
+const { isPlaying, loopRegion, playRegion, activatedSurferName } = storeToRefs(appStore)
 const _loopRegion = ref(false)
 const _playRegion = ref(false)
+
+const disabled = computed(() => {
+  return activatedSurferName.value === ''
+})
 
 function togglePlayStatus() {
   isPlaying.value = !isPlaying.value
@@ -23,13 +27,13 @@ function togglePlayRegion() {
 <template>
   <div class="controller">
     <div class="buttons mb-4">
-      <button class="button outlined">
+      <button class="button outlined" :disabled="disabled">
         Rewind
       </button>
-      <button class="button primary" @click="togglePlayStatus">
+      <button class="button primary" @click="togglePlayStatus" :disabled="disabled">
         {{ isPlaying ? 'Pause' : 'Play' }}
       </button>
-      <button class="button outlined">
+      <button class="button outlined" :disabled="disabled">
         Forward
       </button>
     </div>
