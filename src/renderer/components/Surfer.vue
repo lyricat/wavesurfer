@@ -9,10 +9,13 @@ import Pitchfinder from 'pitchfinder'
 
 import { useAppStore } from '../stores'
 const appStore = useAppStore()
-const { isPlaying, loopRegion, playRegion, activatedSurferName } = storeToRefs(appStore)
-// const pitchWorker = new Worker(path.resolve(__dirname, 'workers', 'pitch-worker.js'));
+const {
+  isPlaying, loopRegion, playRegion,
+  activatedSurferName, transcriptText
+} = storeToRefs(appStore)
 
 let ws:any = null
+let recordWs:any = null
 let record:any = null
 let activeRegion:any = null;
 const containerEl = ref(null)
@@ -69,7 +72,7 @@ function createWs(container:any, audio: any, url: string) {
     opts.url = url
   }
 
-  console.log(opts);
+  clear();
 
   const _ws = WaveSurfer.create(opts)
 
@@ -91,13 +94,14 @@ function createWs(container:any, audio: any, url: string) {
   _ws.on('interaction', () => {
     _ws.pause()
     activeRegion = null
+    isPlaying.value = false
   })
 
   _ws.on('decode', () => {
     // Regions
     wsRegions.addRegion({
       start: 0.2,
-      end: 5,
+      end: 3,
       // content: 'Resize me',
       color: randomColor(),
       drag: true,
@@ -117,6 +121,8 @@ function createWs(container:any, audio: any, url: string) {
         } else {
           activeRegion = null
           _ws.pause()
+          isPlaying.value = false
+          _ws.seekTo(region.end / _ws.getDuration())
         }
       }
     }
@@ -193,6 +199,7 @@ function updatePeaks() {
 }
 
 async function loadFile() {
+
   const tobiPlayer = (window as any).tobiPlayer;
   const filePath = await tobiPlayer.openDialog();
   if (filePath) {
@@ -205,34 +212,26 @@ async function loadFile() {
 
     filled.value = true;
     activatedSurferName.value = props.name;
+    console.log(transcriptText);
+    tobiPlayer.createTranscript(filePath).then((ts:any) => {
+      console.log(ts, transcriptText);
+      transcriptText.value = ts
+    });
   };
 }
 
 function startRecording() {
-  if (record) {
+  const mic:any = micEl.value as any;
+  if (isRecording.value) {
     if (record.isRecording()) {
       record.stopRecording()
       isRecording.value = false
       return
     }
 
-    record.startRecording().then(() => {
-      isRecording.value = true
-    })
-
-  }
-}
-
-function activate() {
-  if (filled.value) {
-    activatedSurferName.value = props.name
-  }
-}
-
-onMounted(() => {
-  setTimeout(() => {
-    const mic:any = micEl.value as any;
-    const _ws = WaveSurfer.create({
+  } else {
+    clear();
+    recordWs = WaveSurfer.create({
       container: mic,
       waveColor: 'rgba(100, 200, 200, 0.5)',
       progressColor: 'rgba(100, 100, 100, 0.5)',
@@ -242,22 +241,59 @@ onMounted(() => {
       height: mic.clientHeight,
     })
 
-    record = _ws.registerPlugin(RecordPlugin.create())
+    record = recordWs.registerPlugin(RecordPlugin.create())
+    record.startRecording().then(() => {
+      isRecording.value = true
+    })
+
     record.on('record-end', (blob:any) => {
       const recordedUrl = URL.createObjectURL(blob)
       ws = createWs(containerEl.value, null, recordedUrl);
       filled.value = true;
+      isRecording.value = false;
       activatedSurferName.value = props.name;
-
-      // Download link
-      // const link = container.appendChild(document.createElement('a'))
-      // Object.assign(link, {
-      //   href: recordedUrl,
-      //   download: 'recording.' + blob.type.split(';')[0].split('/')[1] || 'webm',
-      //   textContent: 'Download recording',
-      // })
+      recordWs.destroy();
     })
-  }, 300)
+  }
+}
+
+function activate() {
+  if (filled.value) {
+    activatedSurferName.value = props.name
+  }
+}
+
+function clear() {
+  if (ws) {
+    ws.destroy();
+  }
+  ws = null;
+  isPlaying.value = false;
+  filled.value = false;
+}
+
+onMounted(() => {
+  // setTimeout(() => {
+  //   const mic:any = micEl.value as any;
+  //   const _ws = WaveSurfer.create({
+  //     container: mic,
+  //     waveColor: 'rgba(100, 200, 200, 0.5)',
+  //     progressColor: 'rgba(100, 100, 100, 0.5)',
+  //     minPxPerSec: 100,
+  //     hideScrollbar: true,
+  //     autoCenter: false,
+  //     height: mic.clientHeight,
+  //   })
+
+  //   record = _ws.registerPlugin(RecordPlugin.create())
+  //   record.on('record-end', (blob:any) => {
+  //     console.log('end!')
+  //     const recordedUrl = URL.createObjectURL(blob)
+  //     ws = createWs(containerEl.value, null, recordedUrl);
+  //     filled.value = true;
+  //     activatedSurferName.value = props.name;
+  //   })
+  // }, 300)
 })
 </script>
 
@@ -265,7 +301,16 @@ onMounted(() => {
   <div class="surfer" :class="isActivated ? 'activated': ''" @click="activate">
     <div ref="containerEl" class="wave" :class="filled? 'show': ''">
     </div>
+
     <div class="mic" :class="isRecording? 'show': ''" ref="micEl"></div>
+
+    <div v-if="filled" class="buttons">
+      <button class="button sm plain" @click="loadFile">Load file</button>
+      <button v-if="useRecord" class="button sm plain" @click="startRecording">
+        {{ isRecording ? 'Stop recording' : 'Start recording' }}
+      </button>
+      <button class="button sm plain" @click="clear">Clear</button>
+    </div>
 
     <div v-if="!filled" class="placeholder-wrapper">
       <template v-if="!useRecord">
@@ -298,13 +343,26 @@ onMounted(() => {
     top: 1rem;
     left: 1rem;
     right: 1rem;
-    bottom: 1rem;
+    bottom: 64px;
     opacity: 0;
     border-radius: 2px;
     box-shadow: 0 0 10px rgba(114, 177, 255, 0.2);
     &.show {
       opacity: 1;
     }
+  }
+  .mic {
+    bottom: 1rem;
+  }
+  .buttons {
+    position: absolute;
+    bottom: 0.8rem;
+    left: 50%;
+    background: white;
+    border-radius: 20rem;
+    box-shadow: 0 0 10px rgba(114, 177, 255, 0.2);
+    padding: 0;
+    transform: translateX(-50%);
   }
 }
 .placeholder-wrapper {

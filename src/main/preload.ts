@@ -17,4 +17,9 @@ contextBridge.exposeInMainWorld('tobiPlayer', {
     const audioUrl = await ipcRenderer.invoke('load-audio-file', filePath);
     return audioUrl;
   },
+
+  createTranscript: async (filePath) => {
+    const transcript = await ipcRenderer.invoke('create-transcript', filePath);
+    return transcript;
+  },
 });

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, session, dialog } from 'electron';
 import { join } from 'path';
 import { readFileSync } from 'fs';
+import { exec } from 'child_process';
 
 let mainWindow:any = null;
 
@@ -80,3 +81,24 @@ ipcMain.handle('load-audio-file', (event, filePath) => {
     return "";
   }
 });
+
+
+ipcMain.handle('create-transcript', (event, filePath) => {
+  return new Promise((resolve, reject) => {
+    const sh = `./bin/main -m ./bin/ggml-base.en.bin -f ${filePath} -otxt -of ./output`
+    exec(sh, (err, stdout, stderr) => {
+      if (err) {
+        console.error(`exec error: ${err}`);
+        return;
+      }
+      if (stderr) {
+        console.error(`Error output: ${stderr}`);
+      }
+      console.log(`Output: ${stdout}`);
+
+      // read the output file
+      const data = readFileSync('output.txt');
+      resolve(data.toString().trim());
+    });
+  });
+})

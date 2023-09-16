@@ -4,8 +4,8 @@ import { defineProps, onMounted, ref } from 'vue'
 import { useAppStore } from '../stores'
 const appStore = useAppStore()
 const { isPlaying, loopRegion, playRegion, activatedSurferName } = storeToRefs(appStore)
-const _loopRegion = ref(false)
-const _playRegion = ref(false)
+const _loopRegion = ref(loopRegion)
+const _playRegion = ref(playRegion)
 
 const disabled = computed(() => {
   return activatedSurferName.value === ''
